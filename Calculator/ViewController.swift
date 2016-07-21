@@ -8,14 +8,60 @@
 
 import UIKit
 
+//number formatter
+//backspace and clear
+//description
+//rand
+//all tasks
+//date&time be white
 
 class ViewController: UIViewController {
 
     @IBOutlet private weak var display: UILabel!
+    @IBOutlet private weak var history: UILabel!
+    @IBOutlet private weak var backClearButton: UIButton!
 //    @IBOutlet var buttons: [UIButton]!
 //    @IBOutlet var heightConstraintsForChoiceButtons: [NSLayoutConstraint]!
     private var userIsInTheMiddleOfTyping = false
 
+    //initializer logic
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        configureView(traitCollection.verticalSizeClass)
+        UIApplication.sharedApplication().statusBarStyle = .LightContent
+        
+        //to add a fancy long press clear button:
+        let tapGesture = UITapGestureRecognizer(target: self, action: #selector(ViewController.backspace))
+        let longGesture = UILongPressGestureRecognizer(target: self, action: #selector(ViewController.clear(_:)))
+        tapGesture.numberOfTapsRequired = 1
+        backClearButton.addGestureRecognizer(tapGesture)
+        backClearButton.addGestureRecognizer(longGesture)
+    }
+    
+    //this could totally be an optional if CalculatorBrain is nil
+    private var brain = CalculatorBrain()
+    
+    private var displayValue: Double? {
+        get {
+            if let text = display.text, value = Double(text) {
+                return value
+                //value = .numberFromString(text)?.doubleValue
+            }
+            return nil
+        }
+        set {
+            if let value = newValue {
+                display.text = String(value)
+                display.text = brain.numFormatter.stringFromNumber(value)
+                history.text = brain.description + (brain.isPartialResult ? " ..." : " =")
+            } else {
+                display.text = "0"
+                history.text = "0"
+                userIsInTheMiddleOfTyping = false
+            }
+
+        }
+    }
     
     @IBAction private func touchDigit(sender: UIButton) {
         //sometimes crashing your app is a way to find a bug
@@ -39,29 +85,40 @@ class ViewController: UIViewController {
         
         userIsInTheMiddleOfTyping = true
     }
-    
-    private var displayValue: Double {
-        get {
-            //would crash if non-numbers were in the label
-            return Double(display.text!)!
-        }
-        set {
-            display.text = String(newValue)
-        }
-    }
-
-    //this could totally be an optional if CalculatorBrain is nil
-    private var brain = CalculatorBrain()
-    
     @IBAction private func performOperation(sender: UIButton) {
         if userIsInTheMiddleOfTyping  {
-            brain.setOperand(displayValue)
+            brain.setOperand(displayValue!)
             userIsInTheMiddleOfTyping = false
         }
         if let mathematicalSymbol = sender.currentTitle {
             brain.performOperation(mathematicalSymbol)
         } //else not defined
         displayValue = brain.result
+    }
+    
+    func backspace() {
+        if userIsInTheMiddleOfTyping {
+            if var text = display.text {
+                text.removeAtIndex(text.endIndex.predecessor())
+                if text.isEmpty {
+                    text = "0"
+                    userIsInTheMiddleOfTyping = false
+                }
+                display.text = text
+            }
+        }
+    }
+    
+    func clear(sender: UIGestureRecognizer) {
+        if sender.state == .Ended {
+            brain = CalculatorBrain()
+            displayValue = nil
+            history.text = "0"
+            userIsInTheMiddleOfTyping = false
+        }
+        else if sender.state == .Began {
+            //Do Whatever You want on Began of Gesture
+        }
     }
     
     /*
@@ -97,12 +154,6 @@ class ViewController: UIViewController {
 //            button.layer.borderColor = UIColor.grayColor().CGColor
 //            
 //        }
-    }
-    
-    override func viewDidLoad() {
-        super.viewDidLoad()
-        configureView(traitCollection.verticalSizeClass)
-        UIApplication.sharedApplication().statusBarStyle = .LightContent
     }
 }
 
